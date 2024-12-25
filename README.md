@@ -1,35 +1,69 @@
 # pandas-challenge-1
-Module 4 challenge
-Challenge: Wholesale Data Analysis
-This project analyzes a dataset containing order information for clients, focusing on transforming and summarizing the data for actionable insights.
-Steps to Complete the Challenge
-Part 1: Explore the Data
-Import the dataset and inspect column names and statistics.
-Identify:
-The top 3 item categories by the number of entries.
-The subcategory with the most entries in the top category.
-The 5 clients with the most entries and their total quantities.
-Store the top client IDs in a list.
-Part 2: Transform the Data
-Create new columns:
-Subtotal: unit_price * qty
-Shipping Price: Based on unit weight ($7/lb for weights over 50 lbs, $10/lb otherwise).
-Total Price: Includes subtotal, shipping price, and a sales tax of 9.25%.
-Line Cost: Uses unit_cost, qty, and shipping_price.
-Profit: Difference between line_price and line_cost.
-Part 3: Confirm Your Work
-Verify the total prices for the following orders against provided receipts:
-Order ID 2742071: $152,811.89
-Order ID 2173913: $162,388.71
-Order ID 6128929: $923,441.25
-Part 4: Summarize and Analyze
-Calculate the total spending of the top 5 clients.
-Create a summary DataFrame with:
-Total units purchased, total shipping price, total revenue, and total profit.
-Format the summary in millions of dollars, sort by total profit, and rename columns for presentation.
-Write a 2–3 sentence summary of findings.
-Technologies
-Python
-Pandas
-Usage
-Run the provided Python script in Jupyter Notebook or any Python IDE with Pandas installed. Ensure the dataset is in the correct directory.
+import pandas as pd
+
+# Load the dataset
+data = pd.read_csv('client_dataset.csv')
+
+# Part 1: Explore the Data
+# Column names and basic stats
+print(data.columns)
+print(data.describe())
+
+# Top 3 categories and their subcategories
+top_categories = data['category'].value_counts().head(3)
+print(top_categories)
+
+top_subcategory = (
+    data[data['category'] == top_categories.index[0]]['subcategory'].value_counts().idxmax()
+)
+print(top_subcategory)
+
+# Top 5 clients and their total quantities
+top_clients = data['client_id'].value_counts().head(5)
+top_client_ids = top_clients.index.tolist()
+top_client_total_qty = data[data['client_id'] == top_client_ids[0]]['qty'].sum()
+
+print(top_clients)
+print(top_client_total_qty)
+
+# Part 2: Transform the Data
+# Add subtotal column
+data['subtotal'] = data['unit_price'] * data['qty']
+
+# Add shipping price column
+data['shipping_price'] = data['unit_weight'].apply(
+    lambda weight: 7 * weight if weight > 50 else 10 * weight
+)
+
+# Add total price column
+data['total_price'] = (data['subtotal'] + data['shipping_price']) * 1.0925
+
+# Add line cost column
+data['line_cost'] = (data['unit_cost'] * data['qty']) + data['shipping_price']
+
+# Add profit column
+data['profit'] = data['total_price'] - data['line_cost']
+
+# Part 3: Confirm Your Work
+# Check order totals for specified IDs
+order_ids_to_check = [2742071, 2173913, 6128929]
+order_totals = data[data['order_id'].isin(order_ids_to_check)].groupby('order_id')['total_price'].sum()
+print(order_totals)
+
+# Part 4: Summarize and Analyze
+# Total spending of top 5 clients
+client_spending = (
+    data[data['client_id'].isin(top_client_ids)]
+    .groupby('client_id')
+    .agg(total_units=('qty', 'sum'),
+         total_shipping=('shipping_price', 'sum'),
+         total_revenue=('total_price', 'sum'),
+         total_profit=('profit', 'sum'))
+)
+
+# Convert to millions of dollars and sort by profit
+client_spending['total_revenue'] /= 1_000_000
+client_spending['total_profit'] /= 1_000_000
+client_spending.sort_values(by='total_profit', ascending=False, inplace=True)
+
+print(client_spending)
